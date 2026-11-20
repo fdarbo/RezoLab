@@ -11,23 +11,23 @@ Interface web locale (`http://127.0.0.1:8420`), serveur en Python + [Scapy](http
 
 **Chemin animé** — le trajet des paquets, avec leur type sur la flèche :
 
-![Chemin animé](/home/fdarbo/Analyse_reseau/RezoLab/docs/01-chemin-anime.png "Chemin animé")
+![Chemin animé](/RezoLab/docs/01-chemin-anime.png "Chemin animé")
 
 **Diagramme de séquence** — un échange par ligne, avec l'adresse ou le domaine distant :
 
-![Diagramme de séquence](/home/fdarbo/Analyse_reseau/RezoLab/docs/02-diagramme-sequence.png)
+![Diagramme de séquence](/RezoLab/docs/02-diagramme-sequence.png)
 
 **Flux TCP** — décodage HTTP et détection des identifiants en clair :
 
-![Flux TCP et secrets](/home/fdarbo/Analyse_reseau/RezoLab/docs/03-flux-tcp-secrets.png)
+![Flux TCP et secrets](/RezoLab/docs/03-flux-tcp-secrets.png)
 
 **Cartographie** — machines du réseau, ports ouverts, type d'appareil deviné :
 
-![Cartographie](/home/fdarbo/Analyse_reseau/RezoLab/docs/04-cartographie.png)
+![Cartographie](/RezoLab/docs/04-cartographie.png)
 
 **Aide intégrée** — bouton « ? Aide », ouverture et fermeture en fondu :
 
-![Aide](/home/fdarbo/Analyse_reseau/RezoLab/docs/05-aide.png)
+![Aide](/RezoLab/docs/05-aide.png)
 
 ## Installation
 
