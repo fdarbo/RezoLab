@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: GPL-2.0-only — Copyright (c) 2026 fdarbo — RézoLab, voir LICENSE -->
+<html lang="fr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>RézoLab</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header><svg class="logo" viewBox="-34 -40 68 80" width="40" height="46"><path class="iso" d="M-24,-24L0,-12V30L-24,18Z"/><path class="iso" d="M24,-24L0,-12V30L24,18Z"/><path class="iso top" d="M0,-36L24,-24L0,-12L-24,-24Z"/></svg><div class="brand"><h1>RÉZO<b>LAB</b></h1><small>Capture &amp; analyse réseau</small></div><span class="st" id="status">…</span><span class="dot" id="dot"></span>
+<span style="flex:1"></span><span class="badge" id="netinfo"></span><span class="lay"><button class="chip on" data-hide="left" title="Afficher / masquer la liste des protocoles">Protocoles</button><button class="chip on" data-hide="bottom" title="Afficher / masquer le flux de paquets">Paquets</button><button class="chip on" data-hide="right" title="Afficher / masquer le détail">Détail</button></span><button class="chip" id="bHelp" title="Aide sur l'utilisation (Échap pour fermer)">? Aide</button><button class="chip" id="bTheme" title="Basculer thème clair / sombre">☾</button><div class="hbar"><button class="act" id="bStart">▶ Capturer</button><button class="act stop" id="bStop" disabled>■ Stop</button><label class="chip" style="display:inline-block">📂 Pcap<input type="file" id="pcapf" accept=".pcap,.pcapng,.cap" hidden></label><button class="chip" id="bPcapPath" title="Charger un pcap/pcapng par son chemin : lu par RézoLab, sans passer par le navigateur (utile avec Firefox Snap)">📁 Chemin</button><button class="chip" id="bClear">🗑 Vider</button><i class="sep"></i><select id="ifsel" title="Interface de capture (détermine l'IP du poste et la passerelle)"><option value="">Interface : auto</option></select><input id="ipf" placeholder="Filtrer par IP (host)"><i class="sep"></i><button class="chip" id="bRestart" title="Rejouer depuis le début">⟲ Rejouer</button><button class="chip" id="bPlay">▶ Lire</button><span style="color:var(--dim)">Vitesse</span><select id="speed" class="chip">
+    <option value="0.1">0.1×</option>
+    <option value="0.25">0.25×</option>
+    <option value="0.5">0.5×</option>
+    <option value="1" selected>1× (temps réel)</option>
+  </select><input type="range" id="prog" min="0" max="0" value="0" ><span class="badge" id="pos">0 / 0</span></div></header>
+
+<div id="ctrls">
+  <span>Protocoles</span>
+  <button class="chip" data-p="dns">DNS</button>
+  <button class="chip" data-p="icmp">ICMP</button>
+  <button class="chip" data-p="dhcp">DHCP</button>
+  <button class="chip" data-p="http">HTTP/S</button>
+  <button class="chip" data-p="telnet">Telnet</button>
+  <button class="chip" data-p="ftp">FTP</button>
+  <button class="chip" data-p="ssh">SSH</button>
+  <button class="chip" data-p="tcp">TCP</button>
+  <button class="chip" data-p="udp">UDP</button>
+  <button class="chip" data-p="arp">ARP</button>
+  <button class="chip" id="bV6" title="Capturer aussi le trafic IPv6 (désactivé par défaut ; modifiable seulement hors capture)">IPv6</button>
+  <button class="chip on" id="bRdns" title="Résoudre le nom des serveurs distants (requêtes DNS inverses PTR)">rDNS</button>
+</div>
+
+<div id="center">
+<div id="tabs">
+  <div class="tab on" data-v="path">Chemin animé</div>
+  <div class="tab" data-v="seq">Diagramme de séquence</div>
+  <div class="tab" data-v="stream">Flux TCP</div>
+  <div class="tab" data-v="map">Cartographie</div>
+</div>
+
+<main>
+
+  <div class="view on" id="v-path"><svg id="svpath" viewBox="0 0 1160 430" preserveAspectRatio="xMidYMid meet"></svg></div>
+  <div class="view" id="v-seq"><div id="seqhead"><svg id="svseqh" viewBox="0 0 1100 70"></svg></div><svg id="svseq" viewBox="0 0 1100 52"></svg></div>
+  <div class="view" id="v-stream"><div id="sthead"><div id="stinfo">Cliquez sur un paquet TCP puis « Suivre le flux ».</div><div id="stmodes"></div></div><div id="pre"></div></div>
+<div class="view" id="v-map">
+  <div id="maphead"><button class="act" id="bScan" title="Balayage ARP puis scan SYN des ports courants (root requis)">▶ Scanner</button>
+    <button class="chip" id="bScanStop" disabled>■ Arrêter</button>
+    <input id="scanCidr" placeholder="Plage (auto)" title="Ex. 192.168.1.0/24">
+    <input id="scanPorts" placeholder="Ports (courants)" title="Ex. 22,80,8000-8100">
+    <button class="chip on" id="bShowUnc" title="Afficher les machines du cache ARP non confirmées (peuvent être éteintes)">Non confirmés</button>
+    <button class="chip" id="bMapClear">↺ Réinitialiser</button>
+    <span id="scanInfo">Passif : lancez une capture. Actif : bouton Scanner.</span></div>
+  <svg id="svmap" viewBox="-300 -300 600 600"></svg></div>
+</main>
+</div>
+<aside id="detail"><h3>Vue d'ensemble</h3><p class="dim">Cliquez sur un paquet pour voir son détail.</p></aside>
+
+<section id="pkts"><div id="pkhead"><h2>Flux de paquets</h2><span id="legend"><span class="lg"><i class="no DNS"></i>DNS</span><span class="lg"><i class="no TCP"></i>TCP</span><span class="lg"><i class="no UDP"></i>UDP</span><span class="lg"><i class="no ICMP"></i>ICMP</span><span class="lg"><i class="no DHCP"></i>DHCP</span><span class="lg"><i class="no ARP"></i>ARP</span></span>
+<div id="replay">
+</div></div>
+<div id="pktable"><table><thead><tr>
+    <th>#</th><th>Temps</th><th>Source</th><th>Destination</th><th>Proto</th><th>Long.</th><th>Info</th>
+  </tr></thead><tbody id="tbody"></tbody></table></div></section>
+
+<div id="help" aria-hidden="true" role="dialog" aria-label="Aide RézoLab">
+<div class="hbox">
+<button id="hclose" class="chip" title="Fermer (Échap)">✕</button>
+<h2>Aide — RézoLab <small id="hver"></small></h2>
+<p class="hlead">Outil de capture et d'analyse réseau pédagogique : on voit les paquets passer, se dérouler et se cartographier. À n'utiliser que sur des réseaux qui vous appartiennent ou avec autorisation.</p>
+
+<h3>1. Démarrer</h3>
+<ul><li>Lancez <code>sudo bash scripts/run.sh</code> (Linux), <code>scripts/RezoLab.command</code> (macOS) ou <code>scripts\run_windows.bat</code> (Windows) : les droits root/administrateur sont requis pour capturer. Puis ouvrez <code>http://127.0.0.1:8420</code>.</li>
+<li>Choisissez l'<b>interface</b> dans le bandeau (ex. <code>wlp2s0</code>). Avec un VPN, <code>tun0</code> montre le trafic en clair, l'interface physique seulement le tunnel chiffré. L'adresse IP et la passerelle affichées suivent l'interface choisie.</li>
+<li>Cliquez <b>▶ Capturer</b>, puis <b>■ Stop</b>. <b>📂 Pcap</b> importe un fichier de capture, <b>🗑 Vider</b> efface tout.</li></ul>
+
+<h3>2. Le bandeau du haut</h3>
+<ul><li><b>Filtrer par IP</b> : ne garde que les paquets de/vers une machine.</li>
+<li><b>Rejouer / Lire / Vitesse</b> : relit la capture pas à pas avec animation ; la barre de progression se déplace à la souris.</li>
+<li><b>Protocoles · Paquets · Détail</b> : masquent ou affichent les volets (la vue centrale s'agrandit). Votre choix est mémorisé.</li>
+<li><b>☾ / ☀</b> : thème sombre ou clair. L'adresse IP et la passerelle sont rappelées en haut à droite.</li></ul>
+
+<h3>3. Menu « Protocoles » (à gauche)</h3>
+<ul><li>Cochez DNS, ICMP, DHCP, HTTP/S, Telnet, FTP, SSH, TCP, UDP, ARP pour limiter la capture et l'affichage. Aucun choix = tout (IPv4 et ARP).</li>
+<li><b>IPv6</b> : désactivé par défaut ; à choisir avant de capturer. <b>rDNS</b> : affiche le nom des serveurs distants grâce à des requêtes DNS inverses (elles sont masquées de la capture).</li>
+<li><b>Conseil pédagogique :</b> choisissez les protocoles <i>avant</i> de lancer la capture ou de rejouer un pcap, pour repérer plus facilement les paquets qui vous intéressent (ex. DNS puis TCP pour suivre une navigation ; Telnet ou FTP pour voir un échange en clair). Cochés avant « Capturer », ils limitent la capture elle-même (filtre BPF) ; cochés après, ils masquent seulement l'affichage.</li></ul>
+
+<h3>4. Les vues</h3>
+<ul><li><b>Chemin animé</b> : le trajet de chaque paquet entre le client, le routeur, Internet, le serveur et le résolveur DNS (affiché dès la première requête DNS). Bleu = aller, vert = retour ; l'étiquette indique le type (TCP SYN, DNS query…).</li>
+<li><b>Diagramme de séquence</b> : un échange par ligne, avec à droite l'adresse ou le domaine distant. L'en-tête reste visible quand on fait défiler.</li>
+<li><b>Flux TCP</b> : sélectionnez un paquet TCP, puis « Suivre le flux ». Modes <i>Décodé</i> (HTTP, Telnet), <i>ASCII</i>, <i>Hex</i>, <i>Paquets</i>. Les <b>identifiants en clair</b> (HTTP Basic, cookies, formulaires, Telnet, FTP, POP3, IMAP, SMTP) sont listés et surlignés. TLS et SSH restent chiffrés.</li>
+<li><b>Cartographie</b> : les machines du réseau autour du routeur. <i>Passif</i> : elles apparaissent avec le trafic vu et la table des voisins du système (par exemple après un <code>nmap -sn</code>). <i>Actif</i> : <b>▶ Scanner</b> fait un balayage ARP puis un scan SYN de ports (plage et ports modifiables). Les machines « non confirmées » sont grisées (cache ARP, peut-être éteintes).</li>
+<li><b>Astuce :</b> lancez un <code>nmap -sn 192.168.1.0/24</code> (adaptez la plage) dans un terminal pendant que RézoLab tourne : ce balayage sans scan de ports complète la cartographie. Les machines découvertes apparaissent grâce à la table des voisins du système et aux réponses ARP capturées (ne filtrez pas l'ARP). Avec les droits root, nmap utilise l'ARP, plus fiable en réseau local. Ne scannez que vos propres réseaux.</li></ul>
+
+<h3>5. Travailler avec la carte</h3>
+<ul><li>Molette : zoom ; glisser : déplacer ; double-clic : recentrer.</li>
+<li>Clic sur une machine : fiche à droite (nom, MAC, fabricant, ports et services, état). Le <b>type d'appareil</b> est deviné ; changez-le dans la liste « Type » pour modifier l'icône.</li></ul>
+
+<h3>6. Panneau « Vue d'ensemble » et tableau</h3>
+<ul><li>Cliquez un paquet du tableau « Flux de paquets » pour voir son détail. Les pastilles de couleur indiquent le protocole.</li></ul>
+
+<h3>7. Bon à savoir</h3>
+<ul><li>Si rien n'apparaît : vérifiez l'interface, les droits root et les filtres cochés.</li>
+<li>Import de pcap/pcapng impossible avec le navigateur (Firefox Snap/Flatpak, fichier créé avec <code>sudo</code>…) : utilisez le bouton <b>📁 Chemin</b> et saisissez le chemin complet du fichier ; RézoLab le lit lui-même. On peut aussi le passer au lancement : <code>sudo bash scripts/run.sh /chemin/capture.pcap</code>.</li>
+<li>Si le navigateur lit mal le fichier : il doit être lisible par votre navigateur. Un fichier créé avec <code>sudo</code> peut demander <code>sudo chown $USER fichier.pcap</code> ; avec un navigateur Snap/Flatpak, copiez-le dans votre dossier personnel.</li>
+<li>Limites : seul le TCP est conservé pour « Suivre le flux » ; l'UDP et le contenu chiffré ne sont pas lisibles ; les types d'appareils sont des estimations.</li>
+<li>Fermer cette aide : <kbd>Échap</kbd>, la croix, ou un clic en dehors.</li></ul>
+</div></div>
+<script src="app.js"></script>
+</body>
+</html>
