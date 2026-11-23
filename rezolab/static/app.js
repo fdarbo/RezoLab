@@ -1,11 +1,12 @@
-// SPDX-License-Identifier: GPL-2.0-only — Copyright (c) 2026 [Votre nom] — RézoLab
+// SPDX-License-Identifier: GPL-2.0-only — Copyright (c) 2026 fdarbo — RézoLab
 'use strict';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let epoch=null;
 const NS='http://www.w3.org/2000/svg';
 let packets=[], seen=0, selIdx=null, playing=false, playIdx=0, playTimer=null;
-let LOCAL_IP='', GATEWAY='';
+let LOCAL_IP='', GATEWAY='';                    // valeurs EFFECTIVES utilisées par toutes les vues
+let SRV_LOCAL='', SRV_GW='', localOverride=null;    // valeurs de cette machine / valeurs déduites du pcap ou saisies
 let seqHistory=[];
 let disp=[];                 // paquets AFFICHÉS (filtrés) — base du tableau, replay et diagramme
 let lastAnimated=0;          // index du dernier paquet déjà propulsé vers les vues
@@ -51,15 +52,57 @@ function refilterAll(){
   drawSeqBase();
 }
 
+/* ================= IP du poste : machine locale, ou déduite d'un pcap réalisé ailleurs ================= */
+const isPriv=ip=>/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.)/.test(ip||'');
+function applyLocal(quiet){
+  LOCAL_IP=localOverride?localOverride.ip:SRV_LOCAL; GATEWAY=localOverride?localOverride.gw:SRV_GW;
+  mapLocal=LOCAL_IP; mapGw=GATEWAY;
+  const tag=localOverride?(localOverride.auto?' (déduit du pcap)':' (saisi)'):'';
+  const n=$('netinfo'); n.textContent=`IP: ${LOCAL_IP||'?'} · GW: ${GATEWAY||'?'}${tag}`;
+  n.style.cursor='pointer'; n.title='Cliquer pour modifier l\'IP du poste (client) et la passerelle : utile pour un pcap capturé sur une autre machine';
+  if(!quiet){ updatePathLabels(); drawSeqHead(); }
+}
+function inferNet(pk){                                  // poste = IP privée la plus présente, pondérée par les SYN émis ; GW = cible ARP/DNS privée du poste
+  const cnt={}, syn={}, arpT={}, dnsT={};
+  pk.forEach(p=>{
+    [p.src,p.dst].forEach(ip=>{ if(isPriv(ip)) cnt[ip]=(cnt[ip]||0)+1; });
+    if(p.fl==='S' && isPriv(p.src)) syn[p.src]=(syn[p.src]||0)+1;
+  });
+  let ip='', best=-1;
+  for(const [k,v] of Object.entries(cnt)){ const sc=v+(syn[k]||0)*2; if(sc>best){ best=sc; ip=k; } }
+  if(!ip){ const s=pk.find(p=>p.fl==='S'); ip=s?s.src:(pk[0]?pk[0].src:''); }       // aucune IP privée : premier client TCP
+  pk.forEach(p=>{
+    if(p.proto==='ARP' && p.src===ip && isPriv(p.dst)) arpT[p.dst]=(arpT[p.dst]||0)+1;
+    if(p.proto==='DNS' && p.src===ip && isPriv(p.dst) && p.dst!==ip) dnsT[p.dst]=(dnsT[p.dst]||0)+1;
+  });
+  const top=o=>Object.entries(o).sort((a,b)=>b[1]-a[1])[0], g=top(arpT)||top(dnsT);
+  return {ip, gw:g?g[0]:''};
+}
+function autoLocalForPcap(){
+  localOverride=null; applyLocal(true);
+  const present=packets.some(p=>p.src===SRV_LOCAL||p.dst===SRV_LOCAL);
+  if(!SRV_LOCAL || !present){                           // capture faite sur une autre machine : on déduit le poste
+    const g=inferNet(packets); if(g.ip) localOverride={ip:g.ip,gw:g.gw,auto:true};
+  }
+  applyLocal(true);
+}
+function refreshLocalViews(){ updatePathLabels(); drawSeqHead(); drawSeqBase(); drawPathBase(); if(mapHosts.length) mapDraw(); }
+$('netinfo').onclick=()=>{
+  const ip=prompt('IP du poste (le « client » des diagrammes). Laisser vide pour revenir au réglage automatique :',LOCAL_IP||'');
+  if(ip===null) return;
+  if(!ip.trim()){ localOverride=null; applyLocal(true); refreshLocalViews(); return; }
+  const gw=prompt('IP de la passerelle (routeur) — facultatif :',GATEWAY||''); if(gw===null) return;
+  localOverride={ip:ip.trim(),gw:(gw||'').trim()}; applyLocal(true); refreshLocalViews();
+};
+
 /* ================= Statut & polling ================= */
 async function status(){
   try{
     const s=await (await fetch('/api/status?iface='+encodeURIComponent($('ifsel').value))).json();
-    LOCAL_IP=s.local_ip; GATEWAY=s.gateway;
+    SRV_LOCAL=s.local_ip||''; SRV_GW=s.gateway||''; applyLocal(true);
     $('dot').classList.toggle('on',s.running);
     if(s.version) $('hver').textContent='v'+s.version;
     $('status').textContent=s.scapy?(s.running?'Capture en cours':'Prêt'):'⚠ scapy absent';
-    $('netinfo').textContent=`IP: ${LOCAL_IP||'?'} · GW: ${GATEWAY||'?'}`;
     $('bStart').disabled=s.running; $('bStop').disabled=!s.running; $('bV6').disabled=s.running; $('ifsel').disabled=s.running;
     updatePathLabels(); drawSeqHead();
     if(s.running) setTimeout(poll,600);
@@ -553,6 +596,7 @@ $('bStart').onclick=async()=>{
   const protos=[...document.querySelectorAll('.chip.on[data-p]')].map(c=>c.dataset.p);
   resetViews();
   drawPathBase();
+  localOverride=null; applyLocal(true);
   const r=await (await fetch('/api/start',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({protocols:protos,host:$('ipf').value,iface:$('ifsel').value,ipv6:$('bV6').classList.contains('on')})})).json();
   if(r.error) alert(r.error);
@@ -562,13 +606,15 @@ $('bStop').onclick=async()=>{ await fetch('/api/stop',{method:'POST'}); status()
 $('bClear').onclick=async()=>{
   await fetch('/api/clear',{method:'POST'});
   resetViews(); drawPathBase();
+  localOverride=null; applyLocal();
 };
 const PCAP_MAGIC=['d4c3b2a1','a1b2c3d4','4d3cb2a1','a1b23c4d','0a0d0d0a'];          // pcap (4 variantes) et pcapng
 async function pcapLoaded(r,name){
   resetViews(); drawPathBase();
   await poll();
-  $('pos').textContent='0 / '+disp.length;
   await status();
+  autoLocalForPcap(); refreshLocalViews();               // le poste peut ne pas être cette machine
+  $('pos').textContent='0 / '+disp.length;
   $('status').textContent='Pcap chargé : '+name+' — '+r.count+' paquets'+(r.warning?' — ⚠ '+r.warning:'');
   if(disp.length) $('bRestart').click();                                            // lecture animée automatique
   else alert('Pcap chargé ('+r.count+' paquets) mais tous masqués par les filtres : décochez des protocoles à gauche.');
@@ -716,7 +762,7 @@ async function mapPoll(){
   if(!$('v-map').classList.contains('on')) return;
   try{
     const r=await (await fetch('/api/hosts?v='+mapV+'&iface='+encodeURIComponent($('ifsel').value))).json();
-    mapGw=r.gateway||''; mapLocal=r.local_ip||'';
+    mapGw=GATEWAY; mapLocal=LOCAL_IP;
     if(r.hosts){ mapHosts=r.hosts; mapV=r.v; mapDraw(); }
     mapStatus(r.scan,mapHosts.length);
   }catch(e){}

@@ -102,6 +102,7 @@
 
 <h3>7. Bon à savoir</h3>
 <ul><li>Si rien n'apparaît : vérifiez l'interface, les droits root et les filtres cochés.</li>
+<li><b>Pcap capturé sur une autre machine</b> : RézoLab déduit l'IP du poste (le « client ») et la passerelle à partir du fichier, et l'indique dans le badge « IP · GW » en haut à droite (« déduit du pcap »). Si la déduction est fausse, cliquez sur ce badge pour saisir la bonne IP du poste ; les diagrammes se redessinent. Vide = réglage automatique.</li>
 <li>Import de pcap/pcapng impossible avec le navigateur (Firefox Snap/Flatpak, fichier créé avec <code>sudo</code>…) : utilisez le bouton <b>📁 Chemin</b> et saisissez le chemin complet du fichier ; RézoLab le lit lui-même. On peut aussi le passer au lancement : <code>sudo bash scripts/run.sh /chemin/capture.pcap</code>.</li>
 <li>Si le navigateur lit mal le fichier : il doit être lisible par votre navigateur. Un fichier créé avec <code>sudo</code> peut demander <code>sudo chown $USER fichier.pcap</code> ; avec un navigateur Snap/Flatpak, copiez-le dans votre dossier personnel.</li>
 <li>Limites : seul le TCP est conservé pour « Suivre le flux » ; l'UDP et le contenu chiffré ne sont pas lisibles ; les types d'appareils sont des estimations.</li>
