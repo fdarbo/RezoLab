@@ -59,6 +59,9 @@ Désinstallation : supprimer le dossier (et le raccourci du Bureau sous Windows)
 ## Conseils d'utilisation
 
 - **Filtrer par protocole avant de capturer.** Cochez les protocoles qui vous intéressent dans le menu « Protocoles » *avant* de cliquer sur « Capturer » (ou avant de charger un pcap) : seuls les paquets utiles sont conservés, ce qui facilite leur repérage d'un point de vue pédagogique (par exemple DNS puis TCP pour suivre une navigation, Telnet ou FTP pour observer un échange en clair). Cochés avant la capture, les protocoles limitent la capture elle-même (filtre BPF) ; cochés après, ils masquent seulement l'affichage.
+- **Pcap capturé sur une autre machine.** Si l'adresse de votre PC n'apparaît pas dans le fichier, RézoLab déduit l'IP du poste (le « client ») et la passerelle
+à partir des paquets (IP privée la plus présente, émettrice des SYN) et l'affiche dans le badge « IP · GW » du bandeau (« déduit du pcap »).
+Cliquez sur ce badge pour la corriger si besoin (par exemple pour une capture prise sur un port miroir avec plusieurs postes).
 - **Compléter la cartographie avec `nmap -sn`.** Pendant que RézoLab tourne, lancez dans un terminal `nmap -sn 192.168.1.0/24` (adaptez la plage) : ce balayage, sans scan de ports, complète la carte. Les machines apparaissent grâce à la table des voisins du système et aux réponses ARP capturées (ne filtrez pas l'ARP). Avec les droits root, nmap utilise l'ARP, plus fiable en réseau local. Ne scannez que vos propres réseaux.
 
 ## Structure du dépôt
