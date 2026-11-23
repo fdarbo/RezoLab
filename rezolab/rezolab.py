@@ -227,7 +227,9 @@ def local_listening_ports():
     ports = set()
     for f, loop in (("/proc/net/tcp", "0100007F"), ("/proc/net/tcp6", "00000000000000000000000001000000")):
         try:
-            for ln in open(f).read().splitlines()[1:]:
+            with open(f) as fh:
+                lignes = fh.read().splitlines()[1:]
+            for ln in lignes:
                 c = ln.split()
                 if len(c) > 3 and c[3] == "0A":                      # LISTEN
                     addr, port = c[1].split(":")

@@ -12,6 +12,7 @@ Le numéro de version est défini à un seul endroit : `__version__` dans `rezol
 - Conseils d'utilisation (README et aide) : filtrer par protocole avant de capturer ; compléter la carte avec `nmap -sn`.
 - Tests automatiques (`tests/`) et interface séparée en `static/index.html`, `app.css`, `app.js`.
 ### Corrigé avant publication
+- Lecture des ports à l'écoute (`/proc/net/tcp`) : le fichier est maintenant refermé proprement (avertissements `ResourceWarning` sous Python 3.14).
 - Scripts d'installation et de lancement indépendants de leur emplacement : ils retrouvent `rezolab.py` à la racine ou dans `rezolab/`, et fonctionnent depuis `scripts/`.
 - Telnet : l'identifiant affiché n'inclut plus les négociations (`WILL NAWS`…) envoyées avant la saisie.
 - Pcap capturé sur une autre machine : l'IP du poste et la passerelle sont déduites du fichier (badge « IP · GW » cliquable pour les corriger) ;
